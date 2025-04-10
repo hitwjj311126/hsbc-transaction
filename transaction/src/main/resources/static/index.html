@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="data:,">
+    <title>Transaction Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .transaction-form {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        .transaction-table {
+            margin-top: 20px;
+        }
+        .action-buttons {
+            white-space: nowrap;
+        }
+    </style>
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="mb-4">Transaction Management</h1>
+        
+        <!-- Create/Update Form -->
+        <div class="transaction-form">
+            <h3 id="form-title">Create Transaction</h3>
+            <form id="transactionForm">
+                <input type="hidden" id="transactionId">
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="accountNumber" class="form-label">Account Number</label>
+                        <input type="text" class="form-control" id="accountNumber" required>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="amount" class="form-label">Amount</label>
+                        <input type="number" step="0.01" class="form-control" id="amount" required>
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <label for="type" class="form-label">Type</label>
+                        <select class="form-select" id="type" required>
+                            <option value="CREDIT">Credit</option>
+                            <option value="DEBIT">Debit</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="description" class="form-label">Description</label>
+                        <input type="text" class="form-control" id="description" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Submit</button>
+                <button type="button" class="btn btn-secondary" id="cancelBtn" style="display: none;">Cancel</button>
+            </form>
+        </div>
+
+        <!-- Transactions Table -->
+        <div class="transaction-table">
+            <h3>Transactions</h3>
+            <div class="table-responsive">
+                <table class="table table-striped">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Account Number</th>
+                            <th>Amount</th>
+                            <th>Type</th>
+                            <th>Description</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="transactionsTableBody"></tbody>
+                </table>
+            </div>
+            <nav aria-label="Page navigation">
+                <ul class="pagination" id="pagination"></ul>
+            </nav>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = '/api/transactions';
+        let currentPage = 0;
+        const pageSize = 10;
+
+        // Form handling
+        const form = document.getElementById('transactionForm');
+        const cancelBtn = document.getElementById('cancelBtn');
+        const formTitle = document.getElementById('form-title');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const transactionId = document.getElementById('transactionId').value;
+            const transaction = {
+                accountNumber: document.getElementById('accountNumber').value,
+                amount: parseFloat(document.getElementById('amount').value),
+                type: document.getElementById('type').value,
+                description: document.getElementById('description').value
+            };
+
+            try {
+                if (transactionId) {
+                    await updateTransaction(transactionId, transaction);
+                } else {
+                    await createTransaction(transaction);
+                }
+                resetForm();
+                loadTransactions();
+            } catch (error) {
+                alert('Error: ' + error.message);
+            }
+        });
+
+        cancelBtn.addEventListener('click', resetForm);
+
+        function resetForm() {
+            form.reset();
+            document.getElementById('transactionId').value = '';
+            cancelBtn.style.display = 'none';
+            formTitle.textContent = 'Create Transaction';
+        }
+
+        // API calls
+        async function createTransaction(transaction) {
+            const response = await fetch(API_BASE_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(transaction)
+            });
+            if (!response.ok) throw new Error('Failed to create transaction');
+        }
+
+        async function updateTransaction(id, transaction) {
+            const response = await fetch(`${API_BASE_URL}/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(transaction)
+            });
+            if (!response.ok) throw new Error('Failed to update transaction');
+        }
+
+        async function deleteTransaction(id) {
+            const response = await fetch(`${API_BASE_URL}/${id}`, {
+                method: 'DELETE'
+            });
+            if (!response.ok) throw new Error('Failed to delete transaction');
+            loadTransactions();
+        }
+
+        async function loadTransactions() {
+            try {
+                const response = await fetch(`${API_BASE_URL}?page=${currentPage}&size=${pageSize}`);
+                const data = await response.json();
+                displayTransactions(data.content);
+                updatePagination(data.totalPages);
+            } catch (error) {
+                alert('Error loading transactions: ' + error.message);
+            }
+        }
+
+        function displayTransactions(transactions) {
+            const tbody = document.getElementById('transactionsTableBody');
+            tbody.innerHTML = '';
+            
+            transactions.forEach(transaction => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${transaction.id}</td>
+                    <td>${transaction.accountNumber}</td>
+                    <td>${transaction.amount}</td>
+                    <td>${transaction.type}</td>
+                    <td>${transaction.description}</td>
+                    <td>${transaction.status}</td>
+                    <td class="action-buttons">
+                        <button class="btn btn-sm btn-primary" onclick="editTransaction('${transaction.id}')">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteTransaction('${transaction.id}')">Delete</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updatePagination(totalPages) {
+            const pagination = document.getElementById('pagination');
+            pagination.innerHTML = '';
+            
+            for (let i = 0; i < totalPages; i++) {
+                const li = document.createElement('li');
+                li.className = `page-item ${i === currentPage ? 'active' : ''}`;
+                li.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i})">${i + 1}</a>`;
+                pagination.appendChild(li);
+            }
+        }
+
+        function changePage(page) {
+            currentPage = page;
+            loadTransactions();
+        }
+
+        async function editTransaction(id) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/${id}`);
+                const transaction = await response.json();
+                
+                document.getElementById('transactionId').value = id;
+                document.getElementById('accountNumber').value = transaction.accountNumber;
+                document.getElementById('amount').value = transaction.amount;
+                document.getElementById('type').value = transaction.type;
+                document.getElementById('description').value = transaction.description;
+                
+                cancelBtn.style.display = 'inline-block';
+                formTitle.textContent = 'Update Transaction';
+            } catch (error) {
+                alert('Error loading transaction: ' + error.message);
+            }
+        }
+
+        // Initial load
+        loadTransactions();
+    </script>
+</body>
+</html> 

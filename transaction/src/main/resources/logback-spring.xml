@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Console Appender -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Root Logger -->
+    <root level="WARN">
+        <appender-ref ref="CONSOLE" />
+    </root>
+
+    <!-- Application Loggers -->
+    <logger name="com.jianjun.transaction" level="WARN" />
+    
+    <!-- Spring Framework Loggers -->
+    <logger name="org.springframework" level="WARN" />
+    
+    <!-- Hibernate Loggers -->
+    <logger name="org.hibernate" level="WARN" />
+    
+    <!-- Test Loggers -->
+    <logger name="com.jianjun.transaction.service" level="WARN" />
+    
+    <!-- Performance Test Logger -->
+    <logger name="com.jianjun.transaction.performance" level="WARN" />
+</configuration> 

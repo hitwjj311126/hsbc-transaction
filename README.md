@@ -101,6 +101,6 @@ The project includes:
 - Performance tests
 - Load tests
 
-## Test Results
+## Test Results(Jmeter)
 ![img.png](transaction/JmeterTests.png)
 
